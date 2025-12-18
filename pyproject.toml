@@ -1,0 +1,20 @@
+[project]
+name = "stimdx"
+version = "0.1.0"
+description = "Dynamic circuits with stim"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "guppylang>=0.21.7",
+    "matplotlib>=3.10.8",
+    "pip>=25.3",
+    "qldpc>=0.2.6",
+    "rich>=14.2.0",
+    "ruff>=0.14.9",
+    "stim>=1.15.0",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.1.0",
+]
