@@ -1,6 +1,6 @@
 # stimdx
 
-stimdx is a simple Python extension for [Stim](https://github.com/quantumlib/Stim) that adds support for dynamic circuits—branching, loops, and conditional logic based on real-time measurement results. 
+stimdx is a simple Python extension for [Stim](https://github.com/quantumlib/Stim) that adds support for dynamic circuits (branching, loops, and conditional logic) based on real-time measurement results. 
 
 ## Quick Start
 
