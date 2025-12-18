@@ -58,14 +58,14 @@ c.conditional(body="X 0", cond=LastMeas(0))
 c.block("M 0 1")
 ```
 
-1. Block A Runs: `sim.do("H 0 1\nM 0")`
+- Block A Runs: `sim.do("H 0 1\nM 0")`
    - The simulator evolves the tableau. Qubits 0 and 1 are in superposition.
    - Qubit 0 is measured. The result (e.g., `True`) is returned to Python.
    - Crucial Qubit 1 is still in the `|+>` state inside the simulator object.
-2.  Python Logic: 
+- Python Logic:
    - Python sees `LastMeas(0)` is `True`. It decides to enter the `If` block.
-3. Block B Runs: `sim.do("X 0")`
+- Block B Runs: `sim.do("X 0")`
    - The simulator applies X to qubit 0.
    - Crucial: The state of Qubit 1 is *untouched* and persists perfectly.
-4. Block C Runs: `sim.do("M 0 1")`
+- Block C Runs: `sim.do("M 0 1")`
    - We measure both. Qubit 1 is finally collapsed.
