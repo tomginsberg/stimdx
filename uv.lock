@@ -1968,11 +1968,12 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
-dev = [
+demo = [
     { name = "ipykernel" },
-    { name = "matplotlib" },
     { name = "qldpc" },
     { name = "rich" },
+]
+dev = [
     { name = "ruff" },
 ]
 
@@ -1980,13 +1981,12 @@ dev = [
 requires-dist = [{ name = "stim", specifier = ">=1.15.0" }]
 
 [package.metadata.requires-dev]
-dev = [
+demo = [
     { name = "ipykernel", specifier = ">=7.1.0" },
-    { name = "matplotlib", specifier = ">=3.10.8" },
     { name = "qldpc", specifier = ">=0.2.6" },
     { name = "rich", specifier = ">=14.2.0" },
-    { name = "ruff", specifier = ">=0.14.9" },
 ]
+dev = [{ name = "ruff", specifier = ">=0.14.9" }]
 
 [[package]]
 name = "sympy"

@@ -10,9 +10,10 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "ruff>=0.14.9",
+]
+demo = [
     "ipykernel>=7.1.0",
-    "matplotlib>=3.10.8",
     "qldpc>=0.2.6",
     "rich>=14.2.0",
-    "ruff>=0.14.9",
 ]
