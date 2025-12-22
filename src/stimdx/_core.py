@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ._execution import DynamicSampler
 
+    import jeff
+
 # ---- AST Nodes ----
 
 
@@ -171,3 +173,31 @@ class Circuit:
         from ._execution import DynamicSampler
 
         return DynamicSampler(self, seed=seed)
+
+    def to_jeff(self, name: str = "main") -> jeff.JeffModule:
+        """
+        Export the circuit to JEFF format.
+
+        JEFF (JSON Exchange Format For circuits) is an intermediate representation
+        for quantum circuits that can be converted to HUGR and executed with Guppy.
+
+        Args:
+            name: Name for the main function in the module.
+
+        Returns:
+            A JeffModule representing the circuit.
+
+        Raises:
+            ValueError: If the circuit contains lambda conditionals, which cannot
+                be serialized to JEFF's declarative format. Use Cond subclasses
+                (LastMeas, MeasParity) instead.
+
+        Example:
+            >>> circuit = Circuit()
+            >>> circuit.block("H 0")
+            >>> circuit.block("M 0")
+            >>> module = circuit.to_jeff()
+        """
+        from ._jeff import to_jeff
+
+        return to_jeff(self, name)
