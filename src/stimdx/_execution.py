@@ -1,26 +1,51 @@
 from __future__ import annotations
-from typing import List, Optional, Union, Callable
+from typing import List, Optional
 import stim
 
 from ._context import ExecContext
 from ._core import Circuit, StimBlock, IfNode, WhileNode, DoWhileNode
 from ._cond import Cond
 
+# Try to import C++ extension
+try:
+    from ._stimdx_cpp import sample_circuit_proto
+
+    HAS_CPP = True
+except ImportError:
+    HAS_CPP = False
+
 
 class DynamicSampler:
     """
-    Executes the Circuit by running it shot-by-shot in a Python loop.
+    Executes the Circuit by running it shot-by-shot.
+    Uses C++ execution if available, otherwise falls back to Python.
     """
 
     def __init__(self, program: Circuit, *, seed: Optional[int] = None):
         self.program = program
         self.seed = seed
 
-    def sample(self, *, shots: int) -> List[List[bool]]:
+    def sample(self, *, shots: int, use_cpp: bool = True) -> List[List[bool]]:
         """
         Samples 'shots' times. Returns a list of measurement lists (one per shot).
+
+        Args:
+            shots: Number of shots to sample.
+            use_cpp: If True and C++ extension is available, use it for faster execution.
+
         Note: The length of each measurement list might vary if the circuit is dynamic!
         """
+        if use_cpp and HAS_CPP:
+            return self._sample_cpp(shots)
+        return self._sample_python(shots)
+
+    def _sample_cpp(self, shots: int) -> List[List[bool]]:
+        """Execute using C++ backend."""
+        proto_bytes = self.program.to_proto()
+        return sample_circuit_proto(proto_bytes, shots, self.seed)
+
+    def _sample_python(self, shots: int) -> List[List[bool]]:
+        """Execute using Python backend."""
         all_samples = []
         for s in range(shots):
             # Create a fresh simulator for each shot
@@ -76,9 +101,6 @@ def execute(program: Circuit, ctx: ExecContext):
             raise TypeError(f"Unknown node type: {type(node)}")
 
 
-def _eval_cond(
-    cond: Union[Cond, Callable[[ExecContext], bool]], ctx: ExecContext
-) -> bool:
-    if isinstance(cond, Cond):
-        return cond.eval(ctx)
-    return cond(ctx)
+def _eval_cond(cond: Cond, ctx: ExecContext) -> bool:
+    """Evaluate a Cond object against the context."""
+    return cond.eval(ctx)
