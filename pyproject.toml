@@ -1,19 +1,36 @@
+[build-system]
+requires = [
+    "scikit-build-core>=0.5",
+    "pybind11>=2.11",
+]
+build-backend = "scikit_build_core.build"
+
 [project]
 name = "stimdx"
-version = "0.1.0"
+version = "0.2.0"
 description = "Dynamic circuits with stim"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "stim>=1.15.0",
+    "stim>=1.14.0",
+    "protobuf>=4.0",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
-    "ruff>=0.14.9",
+    "ruff>=0.4.0",
+    "pytest>=7.0",
 ]
 demo = [
     "ipykernel>=7.1.0",
     "qldpc>=0.2.6",
-    "rich>=14.2.0",
+    "rich>=14.0.0",
 ]
+
+[tool.scikit-build]
+wheel.packages = ["src/stimdx"]
+cmake.build-type = "Release"
+build-dir = "build/{wheel_tag}"
+
+# Use Unix Makefiles to avoid Ninja conflicts with Stim
+ninja.make-fallback = true
