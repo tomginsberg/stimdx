@@ -1,0 +1,72 @@
+syntax = "proto3";
+package stimdx;
+
+// A static block of Stim instructions
+message StimBlock {
+  string stim_circuit_text = 1;
+  bool capture_as_last = 2;
+}
+
+// Condition types for branching
+message LastMeasCondition {
+  int32 index = 1;
+}
+
+message MeasParityCondition {
+  repeated int32 indices = 1;
+}
+
+message Condition {
+  oneof cond_type {
+    LastMeasCondition last_meas = 1;
+    MeasParityCondition meas_parity = 2;
+  }
+}
+
+// Control flow nodes
+message IfNode {
+  Condition condition = 1;
+  Circuit body = 2;
+}
+
+message WhileNode {
+  Condition condition = 1;
+  Circuit body = 2;
+  int32 max_iter = 3;
+}
+
+message DoWhileNode {
+  Condition condition = 1;
+  Circuit body = 2;
+  int32 max_iter = 3;
+}
+
+// Union of all node types
+message Node {
+  oneof node_type {
+    StimBlock stim_block = 1;
+    IfNode if_node = 2;
+    WhileNode while_node = 3;
+    DoWhileNode do_while_node = 4;
+  }
+}
+
+// The circuit AST
+message Circuit {
+  repeated Node nodes = 1;
+}
+
+// Request/Response for sampling
+message SampleRequest {
+  Circuit circuit = 1;
+  int32 shots = 2;
+  optional int64 seed = 3;
+}
+
+message MeasurementRecord {
+  repeated bool measurements = 1;
+}
+
+message SampleResponse {
+  repeated MeasurementRecord records = 1;
+}
