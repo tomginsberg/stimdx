@@ -131,7 +131,7 @@ class Circuit:
             body: The circuit to execute if `cond` evaluates to True.
             cond: The condition to evaluate.
         """
-        if isinstance(body, stim.Circuit) or (is_str := isinstance(body, str)):
+        if (is_str := isinstance(body, str)) or isinstance(body, stim.Circuit):
             if is_str:
                 body = stim.Circuit(body)
             c = Circuit()
