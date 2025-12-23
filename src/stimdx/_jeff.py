@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 import stim
 
 from jeff import (
+    DoWhileSCF,
     FunctionDef,
     IntType,
     JeffModule,
@@ -21,11 +22,30 @@ from jeff import (
     QubitType,
     SwitchSCF,
     WhileSCF,
-    DoWhileSCF,
     quantum_gate,
     qubit_alloc,
     qubit_free,
 )
+
+# Attempt to load JEFF schema for serialization support
+try:
+    import jeff
+
+    if jeff.schema is None:
+        import capnp
+        from pathlib import Path
+
+        # Fix for jeff-format 0.1.0.dev0 which might have disabled schema
+        # or have a bug in its load_schema implementation
+        capnp_file = Path(jeff.__file__).parent.joinpath("data", "jeff.capnp")
+        if capnp_file.exists():
+            # pycapnp load expects a string path
+            jeff.schema = capnp.load(str(capnp_file))  # type: ignore
+except Exception:
+    # Serialization (write_out) will fail if schema is not loaded,
+    # but IR building will still work.
+    pass
+
 
 from ._cond import Cond, LastMeas, MeasParity
 from ._core import Circuit, Node, StimBlock, IfNode, WhileNode, DoWhileNode
@@ -604,4 +624,55 @@ def to_jeff(circuit: Circuit, name: str = "main") -> JeffModule:
     """
     exporter = JeffExporter(circuit)
     return exporter.export(name)
+
+
+def write_jeff(circuit: Circuit, path: str, name: str = "main") -> None:
+    """
+    Export a Circuit to a .jeff file.
+
+    Args:
+        circuit: The Circuit to export.
+        path: Path to the output file.
+        name: Name for the main function in the module.
+
+    Raises:
+        ImportError: If pycapnp is not installed.
+        ValueError: If the circuit contains lambda conditionals.
+    """
+    module = to_jeff(circuit, name)
+
+    import jeff
+
+    if jeff.schema is None:
+        raise ImportError(
+            "JEFF schema not loaded. Ensure pycapnp is installed and "
+            "the jeff-format package is correctly configured."
+        )
+
+    # We can't use module.write_out() because it has a bug in version 0.1.0.dev0
+    # where it tries to call .write() on a reader instead of a builder.
+    # We'll implement the serialization here.
+
+    # 1. Manually trigger a refresh to get the builder
+    # jeff.JeffModule.refresh logic:
+    new_data = jeff.schema.Module.new_message()
+
+    # Access private attributes to replicate refresh
+    _strings = module._compute_strings()
+    strings = new_data.init("strings", len(_strings))
+    for i, s in enumerate(_strings):
+        strings[i] = s
+
+    functions = new_data.init("functions", len(module._functions))
+    for i, func in enumerate(module._functions):
+        func._refresh(functions[i], _strings)  # type: ignore
+
+    new_data.entrypoint = module.entrypoint
+    new_data.version = module.version
+    new_data.tool = module.tool
+    new_data.toolVersion = module.tool_version
+
+    # 2. Write the message builder to the file
+    with open(path, "wb") as f:
+        new_data.write(f)
 

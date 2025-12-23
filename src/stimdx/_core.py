@@ -201,3 +201,19 @@ class Circuit:
         from ._jeff import to_jeff
 
         return to_jeff(self, name)
+
+    def write_jeff(self, path: str, name: str = "main") -> None:
+        """
+        Export the circuit to a .jeff file.
+
+        Args:
+            path: Path to the output file.
+            name: Name for the main function in the module.
+
+        Raises:
+            ImportError: If pycapnp is not installed or schema cannot be loaded.
+            ValueError: If the circuit contains lambda conditionals.
+        """
+        from ._jeff import write_jeff
+
+        write_jeff(self, path, name)

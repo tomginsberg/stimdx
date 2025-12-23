@@ -291,6 +291,27 @@ class TestExporterClass:
         module = to_jeff(c, name="test_func")
         assert isinstance(module, jeff.JeffModule)
 
+    def test_write_jeff(self, tmp_path):
+        """Test writing to a .jeff file."""
+        import os
+        from stimdx import write_jeff
+
+        c = Circuit("H 0\nM 0")
+        path = str(tmp_path / "test.jeff")
+
+        # This should work if pycapnp is installed
+        try:
+            c.write_jeff(path)
+            assert os.path.exists(path)
+            assert os.path.getsize(path) > 0
+            
+            # Verify we can also call the standalone function
+            path2 = str(tmp_path / "test2.jeff")
+            write_jeff(c, path2)
+            assert os.path.exists(path2)
+        except ImportError:
+            pytest.skip("pycapnp not installed or schema not loadable")
+
 
 class TestComplexCircuits:
     """Test complex circuit patterns."""

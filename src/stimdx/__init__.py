@@ -1,7 +1,7 @@
 from ._core import Circuit
 from ._cond import LastMeas, Cond, MeasParity
 from ._execution import DynamicSampler
-from ._jeff import to_jeff, JeffExporter
+from ._jeff import to_jeff, write_jeff, JeffExporter
 
 __all__ = [
     "Circuit",
@@ -10,5 +10,6 @@ __all__ = [
     "MeasParity",
     "DynamicSampler",
     "to_jeff",
+    "write_jeff",
     "JeffExporter",
 ]
