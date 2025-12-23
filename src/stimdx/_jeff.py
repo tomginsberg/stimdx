@@ -603,9 +603,19 @@ class JeffExporter:
     def _build_condition_region(
         self, cond_state: ExportState, cond_val: JeffValue, parent_state: ExportState
     ) -> JeffRegion:
-        """Build a condition region that outputs a boolean."""
+        """Build a condition region that outputs boolean + qubit state.
+
+        For linear types (like qubits), the condition region must pass through
+        the qubit values alongside the boolean result, so they aren't copied.
+        Measurement results are consumed by the condition logic and not passed through.
+        Output order: [cond_val, ...qubit_values]
+        """
         sources = self._get_state_values(parent_state)
-        return self._build_region(cond_state.operations, sources, [cond_val])
+        # Only pass through qubit values (linear types), not measurements
+        # Measurements are consumed to compute the condition boolean
+        qubit_values = [cond_state.qubit_values[q] for q in sorted(cond_state.qubit_values.keys())]
+        targets = [cond_val] + qubit_values
+        return self._build_region(cond_state.operations, sources, targets)
 
 
 def to_jeff(circuit: Circuit, name: str = "main") -> JeffModule:
