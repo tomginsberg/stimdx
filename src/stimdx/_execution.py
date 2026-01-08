@@ -3,7 +3,15 @@ from typing import List, Optional, Union, Callable
 import stim
 
 from ._context import ExecContext
-from ._core import Circuit, StimBlock, IfNode, WhileNode, DoWhileNode
+from ._core import (
+    Circuit,
+    StimBlock,
+    IfNode,
+    WhileNode,
+    DoWhileNode,
+    LetNode,
+    EmitNode,
+)
 from ._cond import Cond
 
 
@@ -35,6 +43,29 @@ class DynamicSampler:
             all_samples.append(list(ctx.meas_record))
 
         return all_samples
+
+    def sample_with_classical(self, shots: int) -> List[dict]:
+        """
+        Samples 'shots' times, returning a dictionary per shot including classical outputs.
+        """
+        results = []
+        for s in range(shots):
+            current_seed = None if self.seed is None else (self.seed + s)
+            sim = stim.TableauSimulator(seed=current_seed)
+            # Initialize with empty vars/outputs (handled by defaults in ExecContext)
+            ctx = ExecContext(sim=sim, meas_record=[], last_block_meas=[])
+
+            execute(self.program, ctx)
+
+            results.append(
+                {
+                    "measurements": list(ctx.meas_record),
+                    "outputs": list(ctx.outputs),
+                    "output_names": list(ctx.output_names),
+                    "vars": dict(ctx.vars),
+                }
+            )
+        return results
 
 
 def execute(program: Circuit, ctx: ExecContext):
@@ -72,6 +103,17 @@ def execute(program: Circuit, ctx: ExecContext):
                 execute(node.body, ctx)
                 if not _eval_cond(node.cond, ctx):
                     break
+
+        elif isinstance(node, LetNode):
+            val = node.expr(ctx)
+            ctx.vars[node.name] = val
+
+        elif isinstance(node, EmitNode):
+            bit = bool(node.expr(ctx))
+            ctx.outputs.append(bit)
+            if node.name:
+                ctx.output_names.append(node.name)
+
         else:
             raise TypeError(f"Unknown node type: {type(node)}")
 

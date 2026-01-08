@@ -61,6 +61,22 @@ class DoWhileNode(Node):
     max_iter: int = 10_000
 
 
+@dataclass
+class LetNode(Node):
+    """Node representing a variable assignment."""
+
+    name: str
+    expr: Callable[[ExecContext], Union[int, bool]]
+
+
+@dataclass
+class EmitNode(Node):
+    """Node representing an output emission."""
+
+    expr: Callable[[ExecContext], bool]
+    name: Optional[str] = None
+
+
 # ---- Circuit Builder ----
 
 
@@ -101,6 +117,13 @@ class Circuit:
                 lines.append(f"{prefix}Do:")
                 lines.append(node.body._str_recursive(indent + 1))
                 lines.append(f"{prefix}While {node.cond}")
+
+            elif isinstance(node, LetNode):
+                lines.append(f"{prefix}Let {node.name} = <expr>")
+
+            elif isinstance(node, EmitNode):
+                name_str = f" ({node.name})" if node.name else ""
+                lines.append(f"{prefix}Emit <expr>{name_str}")
 
             else:
                 lines.append(f"{prefix}{node}")
@@ -165,6 +188,22 @@ class Circuit:
         Useful for Repeat-Until-Success patterns (run -> measure -> check).
         """
         self.nodes.append(DoWhileNode(cond=cond, body=body, max_iter=max_iter))
+        return self
+
+    def let(self, name: str, expr: Callable[[ExecContext], int | bool]) -> Circuit:
+        """
+        Appends a LetNode to store a variable.
+        """
+        self.nodes.append(LetNode(name=name, expr=expr))
+        return self
+
+    def emit(
+        self, expr: Callable[[ExecContext], bool], *, name: Optional[str] = None
+    ) -> Circuit:
+        """
+        Appends an EmitNode to emit a classical output bit.
+        """
+        self.nodes.append(EmitNode(expr=expr, name=name))
         return self
 
     def compile_sampler(self, seed: Optional[int] = None) -> DynamicSampler:
