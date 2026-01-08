@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ._execution import DynamicSampler
+    from ._static_detectors import StaticDetectorSampler
 
 # ---- AST Nodes ----
 
@@ -171,3 +172,47 @@ class Circuit:
         from ._execution import DynamicSampler
 
         return DynamicSampler(self, seed=seed)
+
+    def compile_detector_sampler(self, seed: Optional[int] = None) -> StaticDetectorSampler:
+        """
+        Creates a detector sampler for the circuit.
+        Only supported for static circuits (containing only StimBlocks).
+        """
+        if not self.is_static():
+            raise NotImplementedError(
+                "Detector sampling is not supported for dynamic circuits (must contain only StimBlocks)."
+            )
+
+        from ._static_detectors import StaticDetectorSampler
+
+        return StaticDetectorSampler(self.to_stim(), seed=seed)
+
+    @staticmethod
+    def from_stim(c: stim.Circuit) -> Circuit:
+        """
+        Wraps an existing stim.Circuit in a stimdx Circuit without parsing text.
+        """
+        wrapper = Circuit()
+        wrapper.nodes.append(StimBlock(c, capture_as_last=True))
+        return wrapper
+
+    def is_static(self) -> bool:
+        """
+        Returns True if the circuit contains only StimBlock nodes (no control flow).
+        """
+        return all(isinstance(node, StimBlock) for node in self.nodes)
+
+    def to_stim(self) -> stim.Circuit:
+        """
+        Converts a static stimdx Circuit back to a stim.Circuit.
+        Raises NotImplementedError if the circuit is not static.
+        """
+        if not self.is_static():
+            raise NotImplementedError("to_stim only supports static circuits (StimBlocks only).")
+
+        out = stim.Circuit()
+        for node in self.nodes:
+            # We know it's a StimBlock because of is_static check
+            if isinstance(node, StimBlock):
+                out += node.circuit
+        return out
