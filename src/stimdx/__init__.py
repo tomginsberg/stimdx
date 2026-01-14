@@ -4,4 +4,12 @@ from ._execution import DynamicSampler
 from ._static_detectors import StaticDetectorSampler
 from ._expr import context
 
-__all__ = ["Circuit", "LastMeas", "Cond", "MeasParity", "DynamicSampler", "StaticDetectorSampler", "context"]
+__all__ = [
+    "Circuit",
+    "LastMeas",
+    "Cond",
+    "MeasParity",
+    "DynamicSampler",
+    "StaticDetectorSampler",
+    "context",
+]

@@ -3,6 +3,7 @@ import numpy as np
 from typing import Optional
 import math
 
+
 class StaticDetectorSampler:
     """
     A sampler that delegates to Stim's compiled detector sampler.
@@ -20,7 +21,7 @@ class StaticDetectorSampler:
         *,
         prepend_observables: bool = False,
         append_observables: bool = True,
-        bit_packed: bool = False
+        bit_packed: bool = False,
     ) -> np.ndarray:
         """
         Samples detection events (and optionally observables) from the circuit.
@@ -39,5 +40,5 @@ class StaticDetectorSampler:
             shots=shots,
             prepend_observables=prepend_observables,
             append_observables=append_observables,
-            bit_packed=bit_packed
+            bit_packed=bit_packed,
         )
