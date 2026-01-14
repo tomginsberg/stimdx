@@ -18,6 +18,11 @@ samples = sampler.sample(shots=3)
 # [[True, False], [True, True, False], [False]]
 ```
 
+View the [demo](demo.ipynb) or 
+<a target="_blank" href="https://colab.research.google.com/github/tomginsberg/stimdx/blob/main/demo.ipynb">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a>
+
 ## Philosophy
 
 stimdx is inspired by modern QC languages/compilers like Catalyst and Guppylang, while keeping the "minimalism" of stim. It doesn't require LLVM, complex IRs, or a new embeddeed language (not that these ideas are bad).
