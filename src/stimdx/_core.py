@@ -153,7 +153,7 @@ class Circuit:
             body: The circuit to execute if `cond` evaluates to True.
             cond: The condition to evaluate.
         """
-        if isinstance(body, stim.Circuit) or (is_str := isinstance(body, str)):
+        if (is_str := isinstance(body, str)) or isinstance(body, stim.Circuit):
             if is_str:
                 body = stim.Circuit(body)
             c = Circuit()
@@ -212,7 +212,9 @@ class Circuit:
 
         return DynamicSampler(self, seed=seed)
 
-    def compile_detector_sampler(self, seed: Optional[int] = None) -> StaticDetectorSampler:
+    def compile_detector_sampler(
+        self, seed: Optional[int] = None
+    ) -> StaticDetectorSampler:
         """
         Creates a detector sampler for the circuit.
         Only supported for static circuits (containing only StimBlocks).
@@ -247,7 +249,9 @@ class Circuit:
         Raises NotImplementedError if the circuit is not static.
         """
         if not self.is_static():
-            raise NotImplementedError("to_stim only supports static circuits (StimBlocks only).")
+            raise NotImplementedError(
+                "to_stim only supports static circuits (StimBlocks only)."
+            )
 
         out = stim.Circuit()
         for node in self.nodes:
