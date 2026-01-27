@@ -5,6 +5,7 @@ import stim
 
 from ._context import ExecContext
 from ._cond import Cond
+from ._expr import Expr
 
 
 # Forward declaration handled by annotations,
@@ -39,7 +40,7 @@ class IfNode(Node):
     """Node representing a conditional branch."""
 
     # Condition can be a specialized Cond object or a raw Python lambda
-    cond: Union[Cond, Callable[[ExecContext], bool]]
+    cond: Union[Cond, Expr, Callable[[ExecContext], bool]]
     body: Circuit
 
 
@@ -47,7 +48,7 @@ class IfNode(Node):
 class WhileNode(Node):
     """Node representing a while-loop (check condition before execution)."""
 
-    cond: Union[Cond, Callable[[ExecContext], bool]]
+    cond: Union[Cond, Expr, Callable[[ExecContext], bool]]
     body: Circuit
     max_iter: int = 10_000
 
@@ -56,7 +57,7 @@ class WhileNode(Node):
 class DoWhileNode(Node):
     """Node representing a do-while loop (execute body once, then check condition)."""
 
-    cond: Union[Cond, Callable[[ExecContext], bool]]
+    cond: Union[Cond, Expr, Callable[[ExecContext], bool]]
     body: Circuit
     max_iter: int = 10_000
 
@@ -94,16 +95,30 @@ class Circuit:
     def __str__(self) -> str:
         return self._str_recursive(indent=0)
 
+    def __iadd__(self, other: Circuit) -> Circuit:
+        if not isinstance(other, Circuit):
+            return NotImplemented
+        self.nodes.extend(other.nodes)
+        return self
+
+    def __add__(self, other: Circuit) -> Circuit:
+        if not isinstance(other, Circuit):
+            return NotImplemented
+        combined = Circuit()
+        combined.nodes.extend(self.nodes)
+        combined.nodes.extend(other.nodes)
+        return combined
+
     def _str_recursive(self, indent: int) -> str:
         lines = []
         prefix = "  " * indent
 
         for node in self.nodes:
             if isinstance(node, StimBlock):
-                lines.append(f"{prefix}StimBlock:")
+                # lines.append(f"{prefix}StimBlock:")
                 for line in str(node.circuit).split("\n"):
                     if line.strip():
-                        lines.append(f"{prefix}  {line}")
+                        lines.append(f"{prefix}{line}")
 
             elif isinstance(node, IfNode):
                 lines.append(f"{prefix}If {node.cond}:")
@@ -130,22 +145,53 @@ class Circuit:
 
         return "\n".join(lines)
 
-    def block(self, c: stim.Circuit | str, *, capture_as_last: bool = True) -> Circuit:
+    def block(
+        self,
+        c: stim.Circuit | str | Circuit | Node,
+        *,
+        capture_as_last: bool = True,
+    ) -> Circuit:
         """
-        Appends a static block of Stim instructions.
+        Appends a static block of Stim instructions or an existing stimdx Circuit/Node.
         Args:
-            c: The stim.Circuit or string representation.
+            c: The stim.Circuit, string representation, or a stimdx Circuit/Node.
             capture_as_last: If True, measurements in this block are captured for LastMeas conditions.
         """
+        if isinstance(c, Circuit):
+            self.nodes.extend(c.nodes)
+            return self
+        if isinstance(c, Node):
+            self.nodes.append(c)
+            return self
         if isinstance(c, str):
             c = stim.Circuit(c)
         self.nodes.append(StimBlock(c, capture_as_last=capture_as_last))
         return self
 
+    def _wrap_body(self, body: Union[stim.Circuit, Circuit, str, Node]) -> Circuit:
+        if isinstance(body, Circuit):
+            return body
+        if isinstance(body, Node):
+            wrapper = Circuit()
+            wrapper.nodes.append(body)
+            return wrapper
+        if isinstance(body, str):
+            body = stim.Circuit(body)
+        wrapper = Circuit()
+        wrapper.block(body)
+        return wrapper
+
+    def node(self, node: Node) -> Circuit:
+        """
+        Appends a raw AST node to the circuit.
+        """
+        self.nodes.append(node)
+        return self
+
     def conditional(
         self,
-        body: Union[stim.Circuit, Circuit | str],
-        cond: Union[Cond, Callable[[ExecContext], bool]],
+        body: Union[stim.Circuit, Circuit, str, Node],
+        cond: Union[Cond, Expr, Callable[[ExecContext], bool]],
     ) -> Circuit:
         """
         Appends a conditional block (If statement).
@@ -153,19 +199,14 @@ class Circuit:
             body: The circuit to execute if `cond` evaluates to True.
             cond: The condition to evaluate.
         """
-        if (is_str := isinstance(body, str)) or isinstance(body, stim.Circuit):
-            if is_str:
-                body = stim.Circuit(body)
-            c = Circuit()
-            c.block(body)
-            body = c
-        self.nodes.append(IfNode(cond=cond, body=body))
+        wrapped_body = self._wrap_body(body)
+        self.nodes.append(IfNode(cond=cond, body=wrapped_body))
         return self
 
     def while_loop(
         self,
-        body: Circuit,
-        cond: Union[Cond, Callable[[ExecContext], bool]],
+        body: Union[stim.Circuit, Circuit, str, Node],
+        cond: Union[Cond, Expr, Callable[[ExecContext], bool]],
         max_iter: int = 10000,
     ) -> Circuit:
         """
@@ -174,20 +215,22 @@ class Circuit:
             body: The loop body.
             cond: Loop continues while this evaluates to True.
         """
-        self.nodes.append(WhileNode(cond=cond, body=body, max_iter=max_iter))
+        wrapped_body = self._wrap_body(body)
+        self.nodes.append(WhileNode(cond=cond, body=wrapped_body, max_iter=max_iter))
         return self
 
     def do_while(
         self,
-        body: Circuit,
-        cond: Union[Cond, Callable[[ExecContext], bool]],
+        body: Union[stim.Circuit, Circuit, str, Node],
+        cond: Union[Cond, Expr, Callable[[ExecContext], bool]],
         max_iter: int = 10000,
     ) -> Circuit:
         """
         Executes 'body' at least once, then repeats while 'cond' is true.
         Useful for Repeat-Until-Success patterns (run -> measure -> check).
         """
-        self.nodes.append(DoWhileNode(cond=cond, body=body, max_iter=max_iter))
+        wrapped_body = self._wrap_body(body)
+        self.nodes.append(DoWhileNode(cond=cond, body=wrapped_body, max_iter=max_iter))
         return self
 
     def let(self, name: str, expr: Callable[[ExecContext], int | bool]) -> Circuit:
