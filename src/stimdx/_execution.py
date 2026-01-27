@@ -13,6 +13,7 @@ from ._core import (
     EmitNode,
 )
 from ._cond import Cond
+from ._expr import Expr
 
 
 class DynamicSampler:
@@ -119,8 +120,10 @@ def execute(program: Circuit, ctx: ExecContext):
 
 
 def _eval_cond(
-    cond: Union[Cond, Callable[[ExecContext], bool]], ctx: ExecContext
+    cond: Union[Cond, Expr, Callable[[ExecContext], bool]], ctx: ExecContext
 ) -> bool:
     if isinstance(cond, Cond):
         return cond.eval(ctx)
+    if isinstance(cond, Expr):
+        return bool(cond(ctx))
     return cond(ctx)
