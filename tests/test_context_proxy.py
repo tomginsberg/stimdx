@@ -1,6 +1,5 @@
 import stimdx
 from stimdx import context as ctx
-import pytest
 
 
 def test_context_proxy_rec():

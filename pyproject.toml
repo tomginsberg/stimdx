@@ -9,12 +9,33 @@ description = "Dynamic circuits with stim"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
+authors = [{ name = "Tom Ginsberg", email = "tommyginsberg@gmail.com" }]
+keywords = ["quantum", "stim", "circuits", "qec"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Physics",
+]
 dependencies = [
     "stim>=1.15.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/tomginsberg/stimdx"
+Repository = "https://github.com/tomginsberg/stimdx"
+Issues = "https://github.com/tomginsberg/stimdx/issues"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/stimdx"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["demo.ipynb", "uv.lock"]
 
 [dependency-groups]
 dev = [

@@ -1,7 +1,6 @@
 import stim
 import numpy as np
 from typing import Optional
-import math
 
 
 class StaticDetectorSampler:

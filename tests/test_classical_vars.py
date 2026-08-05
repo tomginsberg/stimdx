@@ -1,4 +1,3 @@
-import stim
 import stimdx
 import pytest
 

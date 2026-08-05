@@ -40,8 +40,7 @@ def test_lower_meas_parity_conditional():
     c.conditional("X 2", stimdx.MeasParity([0, 1]))
 
     lowered_text = str(c.to_stim_lowered())
-    assert "CX rec[-2] 2" in lowered_text
-    assert "CX rec[-1] 2" in lowered_text
+    assert "CX rec[-2] 2 rec[-1] 2" in lowered_text
 
 
 def test_lower_affine_expr_conditional_with_invert_and_xor():
@@ -52,8 +51,7 @@ def test_lower_affine_expr_conditional_with_invert_and_xor():
 
     lowered_text = str(c.to_stim_lowered())
     assert "X 2" in lowered_text
-    assert "CX rec[-1] 2" in lowered_text
-    assert "CX rec[-2] 2" in lowered_text
+    assert "CX rec[-2] 2 rec[-1] 2" in lowered_text
 
 
 def test_lower_affine_expr_conditional_mod2_add():
@@ -62,8 +60,7 @@ def test_lower_affine_expr_conditional_mod2_add():
     c.conditional("Z 2", (ctx.rec(-1) + ctx.rec(-2)) % 2)
 
     lowered_text = str(c.to_stim_lowered())
-    assert "CZ rec[-1] 2" in lowered_text
-    assert "CZ rec[-2] 2" in lowered_text
+    assert "CZ rec[-2] 2 rec[-1] 2" in lowered_text
 
 
 def test_repeat_node_executes_and_lowers_by_unrolling():
@@ -75,7 +72,7 @@ def test_repeat_node_executes_and_lowers_by_unrolling():
     assert all(len(s) == 3 for s in samples)
 
     lowered_text = str(c.to_stim_lowered())
-    assert lowered_text.count("M 0") == 3
+    assert "M 0 0 0" in lowered_text
     assert "DETECTOR rec[-1]" in lowered_text
 
 
@@ -116,7 +113,7 @@ def test_lowering_rejects_loops():
     c.block("M 0")
     c.while_loop("X 0", stimdx.LastMeas(0))
 
-    with pytest.raises(stimdx.LoweringError, match="loops"):
+    with pytest.raises(stimdx.LoweringError, match="compile-time deterministic"):
         c.to_stim_lowered()
 
 

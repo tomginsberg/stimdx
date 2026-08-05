@@ -2,6 +2,18 @@
 
 stimdx is a simple Python extension for [Stim](https://github.com/quantumlib/Stim) that adds support for dynamic circuits (branching, loops, and conditional logic) based on real-time measurement results. 
 
+## Install
+
+```bash
+uv add stimdx
+```
+
+or
+
+```bash
+pip install stimdx
+```
+
 ## Quick Start
 
 Here is a "Repeat Until Success" (RUS) loop that creates outcomes until it measures a `0`.

@@ -115,7 +115,7 @@ def test_error_propagation_no_detectors():
         sampler = dx_circuit.compile_detector_sampler(seed=0)
         # If it didn't raise, try sampling
         sampler.sample(shots=10)
-    except Exception as e:
+    except Exception:
         # If it raised, that's fine, we just want to ensure it wasn't swallowed or changed unexpectedly
         pass
 
