@@ -75,7 +75,7 @@ def test_dynamic_circuit_rejection():
 
     with pytest.raises(
         NotImplementedError,
-        match="Detector sampling is not supported for dynamic circuits",
+        match="static or exactly-lowerable circuits",
     ):
         circuit.compile_detector_sampler()
 

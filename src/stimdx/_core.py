@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import List, Union, Callable, Optional
+from typing import List, Union, Callable, Optional, Sequence
 import stim
 
 from ._context import ExecContext
@@ -63,11 +63,19 @@ class DoWhileNode(Node):
 
 
 @dataclass
+class RepeatNode(Node):
+    """Node representing a fixed-count loop (exactly lowerable)."""
+
+    repetitions: int
+    body: Circuit
+
+
+@dataclass
 class LetNode(Node):
     """Node representing a variable assignment."""
 
     name: str
-    expr: Callable[[ExecContext], Union[int, bool]]
+    expr: Union[Expr, Callable[[ExecContext], Union[int, bool]]]
 
 
 @dataclass
@@ -76,6 +84,22 @@ class EmitNode(Node):
 
     expr: Callable[[ExecContext], bool]
     name: Optional[str] = None
+
+
+@dataclass
+class DetectorNode(Node):
+    """Node representing a detector parity over measurement record bits."""
+
+    indices: List[int]
+    coords: Optional[List[float]] = None
+
+
+@dataclass
+class ObservableIncludeNode(Node):
+    """Node representing an observable parity contribution."""
+
+    observable_index: int
+    indices: List[int]
 
 
 # ---- Circuit Builder ----
@@ -133,12 +157,24 @@ class Circuit:
                 lines.append(node.body._str_recursive(indent + 1))
                 lines.append(f"{prefix}While {node.cond}")
 
+            elif isinstance(node, RepeatNode):
+                lines.append(f"{prefix}Repeat {node.repetitions}:")
+                lines.append(node.body._str_recursive(indent + 1))
+
             elif isinstance(node, LetNode):
                 lines.append(f"{prefix}Let {node.name} = <expr>")
 
             elif isinstance(node, EmitNode):
                 name_str = f" ({node.name})" if node.name else ""
                 lines.append(f"{prefix}Emit <expr>{name_str}")
+
+            elif isinstance(node, DetectorNode):
+                lines.append(f"{prefix}Detector {node.indices}")
+
+            elif isinstance(node, ObservableIncludeNode):
+                lines.append(
+                    f"{prefix}ObservableInclude({node.observable_index}) {node.indices}"
+                )
 
             else:
                 lines.append(f"{prefix}{node}")
@@ -164,7 +200,7 @@ class Circuit:
             self.nodes.append(c)
             return self
         if isinstance(c, str):
-            c = stim.Circuit(c)
+            c = stim.Circuit(c.replace(";", "\n"))
         self.nodes.append(StimBlock(c, capture_as_last=capture_as_last))
         return self
 
@@ -176,7 +212,7 @@ class Circuit:
             wrapper.nodes.append(body)
             return wrapper
         if isinstance(body, str):
-            body = stim.Circuit(body)
+            body = stim.Circuit(body.replace(";", "\n"))
         wrapper = Circuit()
         wrapper.block(body)
         return wrapper
@@ -233,11 +269,25 @@ class Circuit:
         self.nodes.append(DoWhileNode(cond=cond, body=wrapped_body, max_iter=max_iter))
         return self
 
-    def let(self, name: str, expr: Callable[[ExecContext], int | bool]) -> Circuit:
+    def let(
+        self, name: str, expr: Union[Expr, Callable[[ExecContext], int | bool]]
+    ) -> Circuit:
         """
         Appends a LetNode to store a variable.
         """
         self.nodes.append(LetNode(name=name, expr=expr))
+        return self
+
+    def repeat(
+        self, repetitions: int, body: Union[stim.Circuit, Circuit, str, Node]
+    ) -> Circuit:
+        """
+        Appends a fixed-count loop. This is the preferred construct for exact lowering.
+        """
+        if repetitions < 0:
+            raise ValueError("repetitions must be >= 0")
+        wrapped_body = self._wrap_body(body)
+        self.nodes.append(RepeatNode(repetitions=repetitions, body=wrapped_body))
         return self
 
     def emit(
@@ -247,6 +297,38 @@ class Circuit:
         Appends an EmitNode to emit a classical output bit.
         """
         self.nodes.append(EmitNode(expr=expr, name=name))
+        return self
+
+    def detector(
+        self, *indices: int, coords: Optional[Sequence[float]] = None
+    ) -> Circuit:
+        """
+        Appends a detector parity over measurement-record indices.
+
+        Indices follow Python-style indexing against the measurement record at runtime,
+        including negative indexing relative to the current point in the circuit.
+        """
+        if not indices:
+            raise ValueError("detector() requires at least one measurement index")
+        coord_list = None if coords is None else [float(x) for x in coords]
+        self.nodes.append(DetectorNode(indices=list(indices), coords=coord_list))
+        return self
+
+    def observable_include(self, observable_index: int, *indices: int) -> Circuit:
+        """
+        Appends an observable parity contribution.
+        """
+        if observable_index < 0:
+            raise ValueError("observable_index must be >= 0")
+        if not indices:
+            raise ValueError(
+                "observable_include() requires at least one measurement index"
+            )
+        self.nodes.append(
+            ObservableIncludeNode(
+                observable_index=observable_index, indices=list(indices)
+            )
+        )
         return self
 
     def compile_sampler(self, seed: Optional[int] = None) -> DynamicSampler:
@@ -259,17 +341,59 @@ class Circuit:
         self, seed: Optional[int] = None
     ) -> StaticDetectorSampler:
         """
-        Creates a detector sampler for the circuit.
-        Only supported for static circuits (containing only StimBlocks).
+        Creates a detector sampler for a static or exactly-lowerable circuit.
         """
-        if not self.is_static():
-            raise NotImplementedError(
-                "Detector sampling is not supported for dynamic circuits (must contain only StimBlocks)."
-            )
-
         from ._static_detectors import StaticDetectorSampler
+        from ._lowering import LoweringError
 
-        return StaticDetectorSampler(self.to_stim(), seed=seed)
+        if self.is_static():
+            stim_circuit = self.to_stim()
+        else:
+            try:
+                stim_circuit = self.to_stim_lowered()
+            except LoweringError as ex:
+                raise NotImplementedError(
+                    "Detector sampling is only supported for static or exactly-lowerable circuits."
+                ) from ex
+
+        return StaticDetectorSampler(stim_circuit, seed=seed)
+
+    def to_stim_lowered(self) -> stim.Circuit:
+        """
+        Lowers a supported subset of dynamic circuits into a static Stim circuit.
+        """
+        from ._lowering import lower_to_stim
+
+        return lower_to_stim(self)
+
+    def detector_error_model(self, **kwargs):
+        """
+        Produces a detector error model from a static or lowerable circuit.
+        """
+        base = self.to_stim() if self.is_static() else self.to_stim_lowered()
+        return base.detector_error_model(**kwargs)
+
+    def to_sinter_task(self, **task_kwargs):
+        """
+        Creates a sinter.Task from a static or lowerable circuit.
+        """
+        if "circuit" in task_kwargs or "detector_error_model" in task_kwargs:
+            raise ValueError(
+                "Do not pass 'circuit' or 'detector_error_model' to to_sinter_task(); "
+                "stimdx constructs them."
+            )
+        try:
+            import sinter
+        except ImportError as ex:
+            raise ImportError(
+                "sinter is required for to_sinter_task(); install sinter to use this API"
+            ) from ex
+
+        stim_circuit = self.to_stim() if self.is_static() else self.to_stim_lowered()
+        dem = stim_circuit.detector_error_model()
+        return sinter.Task(
+            circuit=stim_circuit, detector_error_model=dem, **task_kwargs
+        )
 
     @staticmethod
     def from_stim(c: stim.Circuit) -> Circuit:

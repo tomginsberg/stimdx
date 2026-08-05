@@ -1962,7 +1962,7 @@ wheels = [
 [[package]]
 name = "stimdx"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "stim" },
 ]
@@ -1974,6 +1974,8 @@ demo = [
     { name = "rich" },
 ]
 dev = [
+    { name = "ipykernel" },
+    { name = "pytest" },
     { name = "ruff" },
     { name = "ty" },
 ]
@@ -1988,6 +1990,8 @@ demo = [
     { name = "rich", specifier = ">=14.2.0" },
 ]
 dev = [
+    { name = "ipykernel", specifier = ">=7.1.0" },
+    { name = "pytest", specifier = ">=9.0.2" },
     { name = "ruff", specifier = ">=0.14.9" },
     { name = "ty", specifier = ">=0.0.14" },
 ]

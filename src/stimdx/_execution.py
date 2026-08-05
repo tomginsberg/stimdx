@@ -9,8 +9,11 @@ from ._core import (
     IfNode,
     WhileNode,
     DoWhileNode,
+    RepeatNode,
     LetNode,
     EmitNode,
+    DetectorNode,
+    ObservableIncludeNode,
 )
 from ._cond import Cond
 from ._expr import Expr
@@ -64,6 +67,8 @@ class DynamicSampler:
                     "outputs": list(ctx.outputs),
                     "output_names": list(ctx.output_names),
                     "vars": dict(ctx.vars),
+                    "detectors": list(ctx.detectors),
+                    "observables": dict(ctx.observables),
                 }
             )
         return results
@@ -104,6 +109,9 @@ def execute(program: Circuit, ctx: ExecContext):
                 execute(node.body, ctx)
                 if not _eval_cond(node.cond, ctx):
                     break
+        elif isinstance(node, RepeatNode):
+            for _ in range(node.repetitions):
+                execute(node.body, ctx)
 
         elif isinstance(node, LetNode):
             val = node.expr(ctx)
@@ -114,6 +122,16 @@ def execute(program: Circuit, ctx: ExecContext):
             ctx.outputs.append(bit)
             if node.name:
                 ctx.output_names.append(node.name)
+
+        elif isinstance(node, DetectorNode):
+            parity = _parity_from_indices(ctx, node.indices)
+            ctx.detectors.append(parity)
+
+        elif isinstance(node, ObservableIncludeNode):
+            parity = _parity_from_indices(ctx, node.indices)
+            ctx.observables[node.observable_index] = bool(
+                ctx.observables.get(node.observable_index, False) ^ parity
+            )
 
         else:
             raise TypeError(f"Unknown node type: {type(node)}")
@@ -127,3 +145,10 @@ def _eval_cond(
     if isinstance(cond, Expr):
         return bool(cond(ctx))
     return cond(ctx)
+
+
+def _parity_from_indices(ctx: ExecContext, indices: List[int]) -> bool:
+    parity = False
+    for i in indices:
+        parity ^= bool(ctx.rec(i))
+    return parity

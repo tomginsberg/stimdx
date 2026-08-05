@@ -3,6 +3,7 @@ from ._cond import LastMeas, Cond, MeasParity
 from ._execution import DynamicSampler
 from ._static_detectors import StaticDetectorSampler
 from ._expr import context
+from ._lowering import LoweringError
 
 __all__ = [
     "Circuit",
@@ -12,4 +13,5 @@ __all__ = [
     "DynamicSampler",
     "StaticDetectorSampler",
     "context",
+    "LoweringError",
 ]

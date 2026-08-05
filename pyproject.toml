@@ -1,20 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "stimdx"
 version = "0.1.0"
 description = "Dynamic circuits with stim"
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.10"
 dependencies = [
     "stim>=1.15.0",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/stimdx"]
+
 [dependency-groups]
 dev = [
+    "pytest>=9.0.2",
     "ruff>=0.14.9",
     "ty>=0.0.14",
+    "ipykernel>=7.1.0",
 ]
 demo = [
     "ipykernel>=7.1.0",
     "qldpc>=0.2.6",
     "rich>=14.2.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--strict-config",
 ]

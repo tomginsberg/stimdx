@@ -16,6 +16,8 @@ class ExecContext:
     vars: Dict[str, Union[int, bool]] = field(default_factory=dict)
     outputs: List[bool] = field(default_factory=list)
     output_names: List[str] = field(default_factory=list)
+    detectors: List[bool] = field(default_factory=list)
+    observables: Dict[int, bool] = field(default_factory=dict)
 
     def rec(self, i: int) -> bool:
         """Helper to access measurement record with bounds checking and negative indexing."""
